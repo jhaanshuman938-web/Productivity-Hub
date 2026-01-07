@@ -34,7 +34,7 @@ function saveImages() {
 }
 
 /* ---------- AVATAR ---------- */
-const DEFAULT_AVATAR_URL = "https://via.placeholder.com/90/6aa8ff/ffffff?text=A";
+const DEFAULT_AVATAR_URL = "https://th.bing.com/th/id/OIP.ZLBpRk7WpBBVqHclmK8ndwHaH_?w=165&h=189&c=7&r=0&o=7&dpr=1.5&pid=1.7&rm=3";
 
 function setAvatar(url) {
   const avatarImg = document.getElementById("avatarImage");
@@ -306,4 +306,5 @@ function renderImages() {
 renderTodos();
 renderNotes();
 renderLinks();
+
 renderImages();
