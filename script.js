@@ -16,6 +16,9 @@ let links = JSON.parse(localStorage.getItem(STORAGE_KEYS.links)) || [];
 let images = JSON.parse(localStorage.getItem(STORAGE_KEYS.images)) || [];
 let editNoteId = null;
 
+/* ---------- DOM ELEMENTS ---------- */
+let noteTitle, noteContent, linkTitle, linkUrl, imageUrl, imageCaption;
+
 /* ---------- SAVE HELPERS ---------- */
 function saveTodos() {
   localStorage.setItem(STORAGE_KEYS.todos, JSON.stringify(todos));
@@ -34,12 +37,12 @@ function saveImages() {
 }
 
 /* ---------- AVATAR ---------- */
-const DEFAULT_AVATAR_URL = "https://th.bing.com/th/id/OIP.ZLBpRk7WpBBVqHclmK8ndwHaH_?w=165&h=189&c=7&r=0&o=7&dpr=1.5&pid=1.7&rm=3";
+const DEFAULT_AVATAR_URL = "https://static.vecteezy.com/system/resources/thumbnails/049/328/543/small_2x/face-icon-logo-flat-vector.jpg";
 
 function setAvatar(url) {
   const avatarImg = document.getElementById("avatarImage");
   const avatarText = document.querySelector(".avatar-text");
-  
+
   if (url && url.trim()) {
     avatarImg.src = url;
     avatarImg.style.display = "block";
@@ -66,11 +69,19 @@ function loadAvatar() {
 
 /* ---------- THEME + ACTIVE TAB ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize DOM element references
+  noteTitle = document.getElementById("noteTitle");
+  noteContent = document.getElementById("noteContent");
+  linkTitle = document.getElementById("linkTitle");
+  linkUrl = document.getElementById("linkUrl");
+  imageUrl = document.getElementById("imageUrl");
+  imageCaption = document.getElementById("imageCaption");
+
   const toggle = document.getElementById("themeToggle");
 
   // Load avatar
   loadAvatar();
-  
+
   // Allow clicking avatar to change it
   const avatar = document.getElementById("avatar");
   if (avatar) {
@@ -88,29 +99,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Restore theme
+  // Restore theme (previous gradient/light theme)
   if (toggle) {
     const savedTheme = localStorage.getItem(STORAGE_KEYS.theme);
+    const isLight = savedTheme === "light";
 
-    if (savedTheme === "light") {
-      document.body.classList.add("light");
-      toggle.textContent = "🌙";
-    } else {
-      toggle.textContent = "☀";
-    }
+    document.body.classList.toggle("light", isLight);
+    toggle.textContent = isLight ? "dark_mode" : "light_mode";
 
     toggle.onclick = () => {
-      document.body.classList.toggle("light");
-      const isLight = document.body.classList.contains("light");
-      toggle.textContent = isLight ? "🌙" : "☀";
-      localStorage.setItem(STORAGE_KEYS.theme, isLight ? "light" : "dark");
+      const nowLight = !document.body.classList.contains("light");
+      document.body.classList.toggle("light", nowLight);
+      toggle.textContent = nowLight ? "dark_mode" : "light_mode";
+      localStorage.setItem(STORAGE_KEYS.theme, nowLight ? "light" : "dark");
     };
   }
 
   // Restore last active tab
   const savedTab = localStorage.getItem(STORAGE_KEYS.activeTab);
   if (savedTab) {
-    const btn = document.querySelector(`.tabs .tab[onclick*="'${savedTab}'"]`);
+    const btn = document.querySelector(`.mdc-tab[onclick*="'${savedTab}'"]`);
     if (btn) {
       setActiveTab(btn, savedTab);
     }
@@ -118,10 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setActiveTab(button, tabName) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mdc-tab').forEach(t => {
+    t.classList.remove('mdc-tab--active');
+    t.setAttribute('aria-selected', 'false');
+  });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-  if (button) button.classList.add('active');
+  if (button) {
+    button.classList.add('mdc-tab--active');
+    button.setAttribute('aria-selected', 'true');
+  }
   const content = document.getElementById(tabName);
   if (content) content.classList.add('active');
 
@@ -135,12 +149,21 @@ function openTab(event, tabName) {
 /* ---------- TODOS ---------- */
 function addTodo() {
   const input = document.getElementById("todoInput");
-  if (!input.value.trim()) return;
+  if (!input || !input.value.trim()) return;
 
-  todos.push({ id: Date.now(), text: input.value });
+  todos.push({ id: Date.now(), text: input.value.trim(), completed: false });
   input.value = "";
   saveTodos();
   renderTodos();
+}
+
+function toggleTodo(id) {
+  const todo = todos.find(t => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    saveTodos();
+    renderTodos();
+  }
 }
 
 function deleteTodo(id) {
@@ -151,13 +174,18 @@ function deleteTodo(id) {
 
 function renderTodos() {
   const ul = document.getElementById("todoList");
+  if (!ul) return;
+
   ul.innerHTML = "";
 
   todos.forEach(t => {
     const li = document.createElement("li");
     li.innerHTML = `
-      ${t.text}
-      <button onclick="deleteTodo(${t.id})">🗑</button>
+      <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+        <input type="checkbox" onchange="toggleTodo(${t.id})" ${t.completed ? "checked" : ""} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--md-sys-color-primary);">
+        <span class="${t.completed ? "todo-completed" : ""}" style="font-size: 16px;">${escapeHtml(t.text)}</span>
+      </div>
+      <button onclick="deleteTodo(${t.id})" aria-label="Delete todo">🗑</button>
     `;
     ul.appendChild(li);
   });
@@ -170,8 +198,10 @@ function renderTodos() {
 
 /* ---------- NOTES ---------- */
 function addNote() {
-  const title = noteTitle.value;
-  const content = noteContent.value;
+  if (!noteTitle || !noteContent) return;
+
+  const title = noteTitle.value.trim();
+  const content = noteContent.value.trim();
   if (!title && !content) return;
 
   if (editNoteId) {
@@ -203,16 +233,22 @@ function deleteNote(id) {
 }
 
 function renderNotes() {
+  const notesList = document.getElementById("notesList");
+  if (!notesList) return;
+
   notesList.innerHTML = "";
   notes.forEach(n => {
-    notesList.innerHTML += `
-      <div class="project">
-        <strong>${n.title || "Untitled"}</strong>
-        <p>${n.content}</p>
-        <button onclick="editNote(${n.id})">✏</button>
-        <button onclick="deleteNote(${n.id})">🗑</button>
+    const noteDiv = document.createElement("div");
+    noteDiv.className = "mdc-card project-card";
+    noteDiv.innerHTML = `
+      <strong class="title-medium">${escapeHtml(n.title || "Untitled")}</strong>
+      <p class="body-medium">${escapeHtml(n.content).replace(/\n/g, '<br>')}</p>
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="mdc-button mdc-button--outlined" onclick="editNote(${n.id})" aria-label="Edit note">✏ Edit</button>
+        <button class="mdc-button mdc-button--outlined" onclick="deleteNote(${n.id})" aria-label="Delete note">🗑 Delete</button>
       </div>
     `;
+    notesList.appendChild(noteDiv);
   });
 
   const emptyMsg = document.querySelector("#notes .empty");
@@ -223,15 +259,15 @@ function renderNotes() {
 
 /* ---------- LINKS ---------- */
 function addLink() {
-  if (!linkUrl.value) return;
+  if (!linkUrl || !linkUrl.value.trim()) return;
 
   links.push({
     id: Date.now(),
-    title: linkTitle.value || linkUrl.value,
-    url: linkUrl.value
+    title: (linkTitle && linkTitle.value.trim()) || linkUrl.value.trim(),
+    url: linkUrl.value.trim()
   });
 
-  linkTitle.value = "";
+  if (linkTitle) linkTitle.value = "";
   linkUrl.value = "";
   saveLinks();
   renderLinks();
@@ -244,14 +280,17 @@ function deleteLink(id) {
 }
 
 function renderLinks() {
+  const linksList = document.getElementById("linksList");
+  if (!linksList) return;
+
   linksList.innerHTML = "";
   links.forEach(l => {
-    linksList.innerHTML += `
-      <li>
-        <a href="${l.url}" target="_blank">${l.title}</a>
-        <button onclick="deleteLink(${l.id})">🗑</button>
-      </li>
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.title)}</a>
+      <button onclick="deleteLink(${l.id})" aria-label="Delete link">🗑</button>
     `;
+    linksList.appendChild(li);
   });
 
   const emptyMsg = document.querySelector("#links .empty");
@@ -262,16 +301,16 @@ function renderLinks() {
 
 /* ---------- IMAGES ---------- */
 function addImage() {
-  if (!imageUrl.value) return;
+  if (!imageUrl || !imageUrl.value.trim()) return;
 
   images.push({
     id: Date.now(),
-    url: imageUrl.value,
-    caption: imageCaption.value
+    url: imageUrl.value.trim(),
+    caption: (imageCaption && imageCaption.value.trim()) || ""
   });
 
   imageUrl.value = "";
-  imageCaption.value = "";
+  if (imageCaption) imageCaption.value = "";
   saveImages();
   renderImages();
 }
@@ -283,17 +322,21 @@ function deleteImage(id) {
 }
 
 function renderImages() {
+  const imageGrid = document.getElementById("imageGrid");
+  if (!imageGrid) return;
+
   imageGrid.innerHTML = "";
   images.forEach(img => {
-    imageGrid.innerHTML += `
-      <div class="image-item">
-        <img src="${img.url}" alt="${img.caption || 'Image'}">
-        <div class="image-meta">
-          <small>${img.caption || ""}</small>
-          <button onclick="deleteImage(${img.id})">🗑</button>
-        </div>
+    const imageDiv = document.createElement("div");
+    imageDiv.className = "image-item";
+    imageDiv.innerHTML = `
+      <img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.caption || 'Image')}" loading="lazy" onerror="this.parentElement.style.display='none'">
+      <div class="image-meta">
+        <small>${escapeHtml(img.caption || "")}</small>
+        <button onclick="deleteImage(${img.id})" aria-label="Delete image">🗑</button>
       </div>
     `;
+    imageGrid.appendChild(imageDiv);
   });
 
   const emptyMsg = document.querySelector("#images .empty");
@@ -302,10 +345,25 @@ function renderImages() {
   }
 }
 
+/* ---------- UTILITY FUNCTIONS ---------- */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 /* ---------- INITIAL RENDER ---------- */
-renderTodos();
-renderNotes();
-renderLinks();
-
-renderImages();
-
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    renderTodos();
+    renderNotes();
+    renderLinks();
+    renderImages();
+  });
+} else {
+  renderTodos();
+  renderNotes();
+  renderLinks();
+  renderImages();
+}
