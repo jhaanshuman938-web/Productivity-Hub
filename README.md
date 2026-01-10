@@ -1,4 +1,4 @@
-# ⭐ Anshuman JHA – Portfolio & Productivity Hub
+# ⭐Portfolio & Productivity Hub
 
 A minimal, single-page **portfolio** + **productivity hub** built with plain **HTML, CSS, JS**.
 
