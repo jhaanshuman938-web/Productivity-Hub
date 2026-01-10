@@ -1,15 +1,13 @@
-# ⭐Portfolio & Productivity Hub
+# ⭐Productivity Hub
 
-A minimal, single-page **portfolio** + **productivity hub** built with plain **HTML, CSS, JS**.
+A minimal,**productivity hub** built with plain **HTML, CSS, JS**.
 
 ## 🧰 What’s Inside
 
 - 👤 **Portfolio Card**
-  - Name, title, email
+  - Name, title,
   - Avatar with initial
   - Social icons (GitHub, Instagram, LinkedIn, Google Keep)
-  - Skills section
-  - Featured projects
 
 - 📂 **Productivity Hub (Tabs)**
   - ✅ **Todos** – add simple tasks
